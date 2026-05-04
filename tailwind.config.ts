@@ -63,16 +63,14 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				noir: {
-					DEFAULT: '#0c0c0e',
-					light: '#131318',
-				},
-				gold: '#c9a84c',
-				cream: '#f0ead6',
+				'warm-white': '#faf9f7',
+				charcoal: '#1c1c1e',
+				'taxi-yellow': '#f5c518',
+				'tg-blue': '#2aabee',
 			},
 			fontFamily: {
-				display: ['Cormorant Garamond', 'serif'],
-				body: ['IBM Plex Sans', 'sans-serif'],
+				display: ['Montserrat', 'sans-serif'],
+				body: ['Golos Text', 'sans-serif'],
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

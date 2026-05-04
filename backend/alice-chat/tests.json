@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Alice chat reply",
+      "method": "POST",
+      "path": "/",
+      "body": "{\"messages\": [{\"role\": \"user\", \"text\": \"Привет, хочу узнать стоимость Москва-Ростов\"}]}",
+      "expectedStatus": 200,
+      "expectedBody": {"reply": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}
