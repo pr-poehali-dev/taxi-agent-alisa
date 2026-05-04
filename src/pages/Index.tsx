@@ -43,6 +43,14 @@ export default function Index() {
   const [splashDone, setSplashDone] = useState(false);
   const [splashFading, setSplashFading] = useState(false);
   const utmRef = useRef<Record<string, string> | null>(getUtmContext());
+  const sessionIdRef = useRef<string>(
+    (typeof window !== "undefined" && (window.sessionStorage.getItem("alice_session") ||
+      (() => {
+        const id = "s_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+        window.sessionStorage.setItem("alice_session", id);
+        return id;
+      })())) || "anon"
+  );
   const greeting = buildInitialGreeting(utmRef.current);
   const initialMsg: Message = { role: "alice", text: greeting, time: formatTime() };
   const [messages, setMessages] = useState<Message[]>([initialMsg]);
@@ -74,7 +82,7 @@ export default function Index() {
       const res = await fetch(ALICE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated, utm: utmRef.current }),
+        body: JSON.stringify({ messages: updated, utm: utmRef.current, session_id: sessionIdRef.current }),
       });
       const data = await res.json();
       const aliceMsg: Message = { role: "alice", text: data.reply, time: formatTime() };

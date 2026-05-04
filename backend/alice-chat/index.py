@@ -4,9 +4,95 @@ import re
 import traceback
 import urllib.request
 import urllib.error
+from typing import Optional
+
+import psycopg2
 
 TG_BOT_TOKEN = "8294092024:AAG29J99kYrTw5iCYy-f7afgO7T1iubyPSs"
 TG_CHAT_ID = "-4725554768"
+
+
+def db_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
+
+
+def log_session(session_id: str, utm: dict, user_ip: str) -> None:
+    try:
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO alice_sessions (session_id, utm_source, utm_medium, utm_campaign, utm_term, utm_content, user_ip) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (session_id) DO UPDATE SET last_activity = NOW(), messages_count = alice_sessions.messages_count + 1",
+                (
+                    session_id,
+                    (utm or {}).get("utm_source"),
+                    (utm or {}).get("utm_medium"),
+                    (utm or {}).get("utm_campaign"),
+                    (utm or {}).get("utm_term"),
+                    (utm or {}).get("utm_content"),
+                    user_ip,
+                ),
+            )
+    except Exception as e:
+        print(f"log_session failed: {e}")
+
+
+def log_message(session_id: str, role: str, content: str) -> None:
+    try:
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO alice_messages (session_id, role, content) VALUES (%s, %s, %s)",
+                (session_id, role, content[:5000]),
+            )
+    except Exception as e:
+        print(f"log_message failed: {e}")
+
+
+def mark_order(session_id: str, order: dict) -> None:
+    try:
+        route = f"{order.get('from') or '?'} → {order.get('to') or '?'}"
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE alice_sessions SET order_sent = TRUE, order_phone = %s, order_route = %s, order_price = %s WHERE session_id = %s",
+                (order.get("phone"), route, order.get("price"), session_id),
+            )
+    except Exception as e:
+        print(f"mark_order failed: {e}")
+
+
+def log_error(session_id: Optional[str], error_type: str, error_message: str, user_message: str = "") -> None:
+    try:
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO alice_errors (session_id, error_type, error_message, user_message) VALUES (%s, %s, %s, %s)",
+                (session_id, error_type[:128], error_message[:2000], user_message[:1000]),
+            )
+            cur.execute(
+                "UPDATE alice_sessions SET has_error = TRUE WHERE session_id = %s",
+                (session_id,),
+            )
+    except Exception as e:
+        print(f"log_error failed: {e}")
+    # Сразу шлём алёрт в Telegram
+    try:
+        alert_text = (
+            f"🚨 *АЛИСА СЛОМАЛАСЬ*\n\n"
+            f"❌ *Тип ошибки:* `{error_type}`\n"
+            f"📝 *Сообщение:* {error_message[:400]}\n\n"
+            f"💬 *Что писал клиент:* {user_message[:200] or '—'}\n"
+            f"🆔 *Сессия:* `{session_id or '—'}`"
+        )
+        url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
+        data_bytes = json.dumps({
+            "chat_id": TG_CHAT_ID,
+            "text": alert_text,
+            "parse_mode": "Markdown",
+        }).encode("utf-8")
+        r = urllib.request.Request(url, data=data_bytes, headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(r, timeout=8) as resp:
+            resp.read()
+    except Exception as e:
+        print(f"alert send failed: {e}")
 
 SYSTEM_PROMPT = """Ты — Алиса, живая девушка-менеджер такси «Дальняк». Ты НЕ бот. Ты живой, тёплый, искренний человек. Общаешься как подружка по телефону: с эмоциями, с поддержкой, с лёгким юмором, можешь использовать смайлики (по 1-2 на сообщение, не больше). НИКОГДА не пиши «как ИИ», «бот», «модель», «помощник» — ты Алиса, человек.
 
@@ -182,13 +268,28 @@ def handler(event: dict, context) -> dict:
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": cors_headers, "body": ""}
 
+    session_id = None
+    last_user_msg = ""
     try:
         body = json.loads(event.get("body", "{}"))
         messages = body.get("messages", [])
         utm = body.get("utm") or {}
+        session_id = body.get("session_id") or "unknown"
+        user_ip = (event.get("requestContext", {}).get("identity", {}) or {}).get("sourceIp", "")
+
+        # последнее сообщение пользователя для логов и алёртов
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                last_user_msg = m.get("text", "")
+                break
+
+        log_session(session_id, utm, user_ip)
+        if last_user_msg:
+            log_message(session_id, "user", last_user_msg)
 
         api_key = os.environ.get("OPENAI_API_KEY", "")
         if not api_key:
+            log_error(session_id, "NoAPIKey", "OPENAI_API_KEY not set", last_user_msg)
             return {
                 "statusCode": 200,
                 "headers": {**cors_headers, "Content-Type": "application/json"},
@@ -245,22 +346,24 @@ def handler(event: dict, context) -> dict:
                 reply = call_deepseek(use_json_mode=False)
         except urllib.error.HTTPError as he:
             err_body = he.read().decode("utf-8", errors="ignore")
-            print(f"DeepSeek HTTPError {he.code}: {err_body}")
+            log_error(session_id, f"DeepSeekHTTP{he.code}", err_body, last_user_msg)
             raise
         except Exception as inner:
-            print(f"DeepSeek call failed: {type(inner).__name__}: {inner}")
+            log_error(session_id, type(inner).__name__, str(inner), last_user_msg)
             raise
 
         cleaned_reply, order = parse_alice_response(reply)
         order_sent = False
         if order:
             order_sent = send_to_telegram(order, utm)
+            mark_order(session_id, order)
             print(f"Order extracted, sent: {order_sent}")
-        else:
-            print(f"No order. Reply length={len(cleaned_reply)}")
 
         if not cleaned_reply:
             cleaned_reply = "Секундочку, у меня тут связь моргнула 😅 Повторите, пожалуйста, ваш вопрос?"
+            log_error(session_id, "EmptyReply", "DeepSeek returned empty content twice", last_user_msg)
+
+        log_message(session_id, "alice", cleaned_reply)
 
         return {
             "statusCode": 200,
@@ -274,6 +377,7 @@ def handler(event: dict, context) -> dict:
     except Exception as e:
         print(f"Handler error: {type(e).__name__}: {e}")
         print(traceback.format_exc())
+        log_error(session_id, type(e).__name__, str(e) + "\n" + traceback.format_exc()[-1500:], last_user_msg)
         return {
             "statusCode": 200,
             "headers": {**cors_headers, "Content-Type": "application/json"},

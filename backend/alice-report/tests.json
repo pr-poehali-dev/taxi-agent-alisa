@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Generate report",
+      "method": "GET",
+      "path": "/?hours=3",
+      "expectedStatus": 200,
+      "expectedBody": {"preview": "string"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
