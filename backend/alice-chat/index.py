@@ -357,15 +357,50 @@ def handler(event: dict, context) -> dict:
                 d = json.loads(resp.read().decode("utf-8"))
                 return d["choices"][0]["message"]["content"].strip()
 
+        def try_call(messages_list, use_json: bool) -> str:
+            req_payload = {
+                "model": "deepseek-chat",
+                "messages": messages_list,
+                "max_tokens": 800,
+                "temperature": 0.85,
+            }
+            if use_json:
+                req_payload["response_format"] = {"type": "json_object"}
+            data_bytes = json.dumps(req_payload).encode("utf-8")
+            r = urllib.request.Request(
+                "https://api.deepseek.com/v1/chat/completions",
+                data=data_bytes,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(r, timeout=25) as resp:
+                d = json.loads(resp.read().decode("utf-8"))
+                return d["choices"][0]["message"]["content"].strip()
+
+        reply = ""
         try:
-            reply = call_deepseek(use_json_mode=True)
+            reply = try_call(openai_messages, use_json=True)
             if not reply or len(reply) < 5:
-                print("Empty JSON-mode reply, retrying without JSON mode")
-                reply = call_deepseek(use_json_mode=False)
+                reply = try_call(openai_messages, use_json=False)
         except urllib.error.HTTPError as he:
             err_body = he.read().decode("utf-8", errors="ignore")
             log_error(session_id, f"DeepSeekHTTP{he.code}", err_body, last_user_msg)
-            raise
+            # Если виноват кастомный промпт — пробуем со встроенным
+            if custom and he.code == 400:
+                try:
+                    fallback_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + openai_messages[1:]
+                    reply = try_call(fallback_messages, use_json=False)
+                    log_error(session_id, "CustomPromptRejected",
+                              "Кастомный промпт отклонён DeepSeek (400). Использован встроенный.",
+                              last_user_msg)
+                except Exception as fb_err:
+                    log_error(session_id, "FallbackFailed", str(fb_err), last_user_msg)
+                    raise he
+            else:
+                raise
         except Exception as inner:
             log_error(session_id, type(inner).__name__, str(inner), last_user_msg)
             raise
