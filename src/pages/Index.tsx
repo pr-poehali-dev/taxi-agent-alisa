@@ -3,10 +3,15 @@ import Icon from "@/components/ui/icon";
 
 const ALICE_URL = "https://functions.poehali.dev/43a3c28f-95df-4c13-b492-834ef01e281a";
 const LOGO_URL = "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/60a2f7e9-50aa-4be3-898b-2395df495665.jpg";
+const MAX_LOGO = "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/92e5468b-6fd2-45a8-b58a-18932a92731e.png";
+const TG_URL = "https://t.me/Mezhgorod1816";
+const MAX_URL = "https://max.ru/u/f9LHodD0cOKyxRQqeR7xEDH25l9Nm8fSUsA2_1MzFQHNuvQmIYwwPFlMh3s";
+const PHONE_DISPLAY = "8 (995) 645-51-25";
+const PHONE_TEL = "+79956455125";
 
 type Message = { role: "user" | "alice"; text: string; time: string };
 
-const INITIAL_MSG = "Добрый день! Алиса, менеджер Такси Дальняк 🚗 Хотите быстро узнать стоимость поездки? Напишите маршрут — посчитаю за минуту, без звонков!";
+const INITIAL_MSG = "Здравствуйте! Я Алиса 🌸 Помогу подобрать машину и сразу посчитаю цену. Куда планируете поездку?";
 
 const formatTime = () => {
   const d = new Date();
@@ -51,7 +56,17 @@ export default function Index() {
       const data = await res.json();
       const aliceMsg: Message = { role: "alice", text: data.reply, time: formatTime() };
       historyRef.current = [...updated, aliceMsg];
-      setMessages([...historyRef.current]);
+      const next = [...historyRef.current];
+      if (data.order_sent) {
+        const sysNote: Message = {
+          role: "alice",
+          text: "✅ Заявка отправлена менеджеру. Перезвонит в течение 15 минут!",
+          time: formatTime(),
+        };
+        historyRef.current = [...historyRef.current, sysNote];
+        next.push(sysNote);
+      }
+      setMessages(next);
     } catch {
       const err: Message = { role: "alice", text: "У нас небольшая заминка. Оставьте номер телефона — менеджер перезвонит в течение 15 минут!", time: formatTime() };
       historyRef.current = [...updated, err];
@@ -97,20 +112,29 @@ export default function Index() {
         </div>
         <div className="flex items-center gap-2">
           <a
-            href="https://t.me/dalniak_max"
+            href={TG_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-tg-blue text-white rounded-xl text-sm font-medium hover:bg-tg-blue/90 transition-colors active:scale-95"
+            title="Telegram"
+            className="w-10 h-10 rounded-full bg-tg-blue text-white flex items-center justify-center hover:bg-tg-blue/90 transition-colors active:scale-95 shadow-sm"
           >
-            <Icon name="Send" size={15} />
-            <span className="hidden sm:inline">Telegram</span>
+            <Icon name="Send" size={17} />
           </a>
           <a
-            href="tel:+79956455125"
-            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-taxi-yellow text-black rounded-xl text-sm font-bold hover:bg-taxi-yellow/80 transition-colors active:scale-95"
+            href={MAX_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="МАКС"
+            className="w-10 h-10 rounded-full overflow-hidden hover:scale-105 transition-transform active:scale-95 shadow-sm bg-white"
+          >
+            <img src={MAX_LOGO} alt="МАКС" className="w-full h-full object-cover" />
+          </a>
+          <a
+            href={`tel:${PHONE_TEL}`}
+            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-taxi-yellow text-black rounded-xl text-sm font-bold hover:bg-taxi-yellow/80 transition-colors active:scale-95 shadow-sm"
           >
             <Icon name="Phone" size={15} />
-            <span className="hidden sm:inline">8 (995) 645-51-25</span>
+            <span className="hidden sm:inline">{PHONE_DISPLAY}</span>
           </a>
         </div>
       </header>
