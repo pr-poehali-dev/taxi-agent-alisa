@@ -44,8 +44,25 @@ def log_message(session_id: str, role: str, content: str) -> None:
                 "INSERT INTO alice_messages (session_id, role, content) VALUES (%s, %s, %s)",
                 (session_id, role, content[:5000]),
             )
+            field = "last_user_message" if role == "user" else "last_alice_message"
+            cur.execute(
+                f"UPDATE alice_sessions SET {field} = %s WHERE session_id = %s",
+                (content[:1000], session_id),
+            )
     except Exception as e:
         print(f"log_message failed: {e}")
+
+
+def get_custom_prompt() -> Optional[str]:
+    try:
+        with db_conn() as conn, conn.cursor() as cur:
+            cur.execute("SELECT value FROM alice_settings WHERE key = 'system_prompt'")
+            row = cur.fetchone()
+            if row and row[0] and row[0].strip():
+                return row[0]
+    except Exception as e:
+        print(f"get_custom_prompt failed: {e}")
+    return None
 
 
 def mark_order(session_id: str, order: dict) -> None:
@@ -298,7 +315,8 @@ def handler(event: dict, context) -> dict:
                 }, ensure_ascii=False),
             }
 
-        system_content = SYSTEM_PROMPT
+        custom = get_custom_prompt()
+        system_content = custom if custom else SYSTEM_PROMPT
         if utm:
             utm_lines = []
             term = utm.get("utm_term") or utm.get("utm_content") or utm.get("utm_campaign") or ""

@@ -66,6 +66,29 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
+    const onLeave = () => {
+      try {
+        const blob = new Blob(
+          [JSON.stringify({ session_id: sessionIdRef.current })],
+          { type: "application/json" }
+        );
+        navigator.sendBeacon(
+          "https://functions.poehali.dev/c1001ea1-8ce4-4812-a3e2-9488343a7660?action=close",
+          blob
+        );
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("pagehide", onLeave);
+    window.addEventListener("beforeunload", onLeave);
+    return () => {
+      window.removeEventListener("pagehide", onLeave);
+      window.removeEventListener("beforeunload", onLeave);
+    };
+  }, []);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
