@@ -64,24 +64,30 @@ SYSTEM_PROMPT = """Ты — Алиса, живая девушка-менедже
 - Цена фикс, без скрытых доплат
 - 5 лет без срывов, поддержка 24/7
 
-🎯 ОТПРАВКА ЗАЯВКИ — КРИТИЧЕСКИ ВАЖНО:
-Когда у тебя СОБРАНА вся информация:
-- маршрут (откуда → куда)
-- дата и время
-- кол-во пассажиров
-- класс авто
-- ИТОГОВАЯ ЦЕНА
-- НОМЕР ТЕЛЕФОНА клиента
+🎯 ФОРМАТ ОТВЕТА — ВСЕГДА СТРОГО JSON:
+Каждый твой ответ — это JSON-объект:
+{
+  "reply": "твой текст для клиента",
+  "order_ready": true/false,
+  "order": {
+    "from": "город откуда (или null)",
+    "to": "город куда (или null)",
+    "date": "дата и время (или null)",
+    "passengers": "число (или null)",
+    "car_class": "Стандарт/Комфорт/Комфорт+/Минивэн (или null)",
+    "price": "итоговая цена с ₽ (или null)",
+    "phone": "телефон клиента в формате +7XXXXXXXXXX (или null)"
+  }
+}
 
-Тогда в самом конце ответа добавь специальный JSON-маркер на отдельной строке (клиент его НЕ видит, его обрабатывает система):
+Поле order_ready ставь true ТОЛЬКО когда:
+1. Клиент дал номер телефона (даже если другие поля не все собраны — главное телефон + откуда/куда)
+2. ИЛИ клиент попросил позвать оператора и оставил номер
+В остальных случаях order_ready = false.
 
-[ORDER]{"from":"Москва","to":"Ростов","date":"15 мая, 10:00","passengers":"2","car_class":"Комфорт","price":"34 320 ₽","phone":"+79991234567"}[/ORDER]
+В поле "phone" нормализуй номер: «89225055125» → «+79225055125», «+7 (922) 505-51-25» → «+79225055125».
 
-После маркера напиши тёплое прощание: «Всё, заявка у менеджера! Перезвонит в течение 15 минут для подтверждения. Хорошей дороги! 🚗»
-
-ВАЖНО: маркер [ORDER]...[/ORDER] добавляй ТОЛЬКО когда есть ВСЕ поля, включая телефон. Не раньше!
-
-Пиши только на русском языке."""
+ВНИМАНИЕ: возвращай ТОЛЬКО валидный JSON, без markdown-обёрток ```json```, без лишнего текста."""
 
 
 def send_to_telegram(order: dict) -> bool:
@@ -117,18 +123,27 @@ def send_to_telegram(order: dict) -> bool:
         return False
 
 
-def extract_order(reply: str):
-    """Извлекает JSON-заявку из маркера [ORDER]...[/ORDER]"""
-    match = re.search(r"\[ORDER\](.*?)\[/ORDER\]", reply, re.DOTALL)
-    if not match:
-        return None, reply
-    raw = match.group(1).strip()
+def parse_alice_response(raw: str):
+    """Парсит JSON-ответ Алисы. Возвращает (reply_text, order_dict_or_none)"""
+    # убираем markdown-обёртки если есть
+    cleaned = raw.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```\s*$", "", cleaned)
+
     try:
-        order = json.loads(raw)
-    except Exception:
-        return None, reply.replace(match.group(0), "").strip()
-    cleaned = reply.replace(match.group(0), "").strip()
-    return order, cleaned
+        data = json.loads(cleaned)
+    except Exception as e:
+        print(f"JSON parse failed: {e}. Raw: {cleaned[:300]}")
+        return cleaned, None
+
+    reply = data.get("reply", "").strip()
+    order_ready = data.get("order_ready", False)
+    order = data.get("order") or {}
+
+    if order_ready and order.get("phone"):
+        return reply, order
+    return reply, None
 
 
 def handler(event: dict, context) -> dict:
@@ -167,8 +182,9 @@ def handler(event: dict, context) -> dict:
         payload = json.dumps({
             "model": "deepseek-chat",
             "messages": openai_messages,
-            "max_tokens": 500,
+            "max_tokens": 600,
             "temperature": 0.85,
+            "response_format": {"type": "json_object"},
         }).encode("utf-8")
 
         req = urllib.request.Request(
@@ -193,11 +209,13 @@ def handler(event: dict, context) -> dict:
             print(f"OpenAI call failed: {type(inner).__name__}: {inner}")
             raise
 
-        order, cleaned_reply = extract_order(reply)
+        cleaned_reply, order = parse_alice_response(reply)
         order_sent = False
         if order:
             order_sent = send_to_telegram(order)
             print(f"Order extracted: {order}, sent: {order_sent}")
+        else:
+            print(f"No order in reply (length={len(cleaned_reply)})")
 
         return {
             "statusCode": 200,
