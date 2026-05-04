@@ -67,6 +67,8 @@ export default {
 				charcoal: '#1c1c1e',
 				'taxi-yellow': '#f5c518',
 				'tg-blue': '#2aabee',
+				'tg-bubble-out': '#fef9c3',
+				'tg-chatbar': '#f4f4f0',
 			},
 			fontFamily: {
 				display: ['Montserrat', 'sans-serif'],

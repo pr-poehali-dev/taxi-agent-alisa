@@ -73,4 +73,20 @@
   .animate-msg-in {
     animation: msgIn 0.25s ease forwards;
   }
+
+  .chat-bg {
+    background-color: #e9e3d4;
+    background-image:
+      radial-gradient(
+        circle at 20% 30%,
+        rgba(245, 197, 24, 0.08) 0%,
+        transparent 40%
+      ),
+      radial-gradient(
+        circle at 80% 70%,
+        rgba(42, 171, 238, 0.06) 0%,
+        transparent 40%
+      ),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%23000' fill-opacity='0.025'%3E%3Cpath d='M30 30c0-11 9-20 20-20S70 19 70 30s-9 20-20 20-20-9-20-20zm-30 0c0-11 9-20 20-20s20 9 20 20-9 20-20 20S0 41 0 30z'/%3E%3C/g%3E%3C/svg%3E");
+  }
 }
