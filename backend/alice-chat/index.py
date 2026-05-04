@@ -124,26 +124,41 @@ def send_to_telegram(order: dict) -> bool:
 
 
 def parse_alice_response(raw: str):
-    """Парсит JSON-ответ Алисы. Возвращает (reply_text, order_dict_or_none)"""
-    # убираем markdown-обёртки если есть
+    """Парсит ответ Алисы. Поддерживает JSON и обычный текст.
+    Возвращает (reply_text, order_dict_or_none)"""
+    if not raw or not raw.strip():
+        return "", None
+
     cleaned = raw.strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
         cleaned = re.sub(r"\s*```\s*$", "", cleaned)
 
+    # Пробуем как JSON
     try:
         data = json.loads(cleaned)
-    except Exception as e:
-        print(f"JSON parse failed: {e}. Raw: {cleaned[:300]}")
-        return cleaned, None
+        if isinstance(data, dict) and "reply" in data:
+            reply = (data.get("reply") or "").strip()
+            order_ready = data.get("order_ready", False)
+            order = data.get("order") or {}
+            if order_ready and isinstance(order, dict) and order.get("phone"):
+                return reply, order
+            return reply, None
+    except Exception:
+        pass
 
-    reply = data.get("reply", "").strip()
-    order_ready = data.get("order_ready", False)
-    order = data.get("order") or {}
+    # fallback: обычный текст (без JSON-mode)
+    # ищем телефон в тексте — если есть, считаем заявкой
+    phone_match = re.search(r"(?:\+7|8)[\s\-()]*\d{3}[\s\-()]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}", cleaned)
+    if phone_match:
+        phone_raw = re.sub(r"\D", "", phone_match.group(0))
+        if phone_raw.startswith("8"):
+            phone_raw = "7" + phone_raw[1:]
+        phone = "+" + phone_raw
+        return cleaned, {"phone": phone, "from": None, "to": None, "date": None,
+                         "passengers": None, "car_class": None, "price": None}
 
-    if order_ready and order.get("phone"):
-        return reply, order
-    return reply, None
+    return cleaned, None
 
 
 def handler(event: dict, context) -> dict:
@@ -179,43 +194,52 @@ def handler(event: dict, context) -> dict:
                 "content": msg["text"],
             })
 
-        payload = json.dumps({
-            "model": "deepseek-chat",
-            "messages": openai_messages,
-            "max_tokens": 600,
-            "temperature": 0.85,
-            "response_format": {"type": "json_object"},
-        }).encode("utf-8")
-
-        req = urllib.request.Request(
-            "https://api.deepseek.com/v1/chat/completions",
-            data=payload,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            method="POST",
-        )
+        def call_deepseek(use_json_mode: bool) -> str:
+            req_payload = {
+                "model": "deepseek-chat",
+                "messages": openai_messages,
+                "max_tokens": 800,
+                "temperature": 0.85,
+            }
+            if use_json_mode:
+                req_payload["response_format"] = {"type": "json_object"}
+            data_bytes = json.dumps(req_payload).encode("utf-8")
+            r = urllib.request.Request(
+                "https://api.deepseek.com/v1/chat/completions",
+                data=data_bytes,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(r, timeout=25) as resp:
+                d = json.loads(resp.read().decode("utf-8"))
+                return d["choices"][0]["message"]["content"].strip()
 
         try:
-            with urllib.request.urlopen(req, timeout=25) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                reply = data["choices"][0]["message"]["content"].strip()
+            reply = call_deepseek(use_json_mode=True)
+            if not reply or len(reply) < 5:
+                print("Empty JSON-mode reply, retrying without JSON mode")
+                reply = call_deepseek(use_json_mode=False)
         except urllib.error.HTTPError as he:
             err_body = he.read().decode("utf-8", errors="ignore")
-            print(f"OpenAI HTTPError {he.code}: {err_body}")
+            print(f"DeepSeek HTTPError {he.code}: {err_body}")
             raise
         except Exception as inner:
-            print(f"OpenAI call failed: {type(inner).__name__}: {inner}")
+            print(f"DeepSeek call failed: {type(inner).__name__}: {inner}")
             raise
 
         cleaned_reply, order = parse_alice_response(reply)
         order_sent = False
         if order:
             order_sent = send_to_telegram(order)
-            print(f"Order extracted: {order}, sent: {order_sent}")
+            print(f"Order extracted, sent: {order_sent}")
         else:
-            print(f"No order in reply (length={len(cleaned_reply)})")
+            print(f"No order. Reply length={len(cleaned_reply)}")
+
+        if not cleaned_reply:
+            cleaned_reply = "Секундочку, у меня тут связь моргнула 😅 Повторите, пожалуйста, ваш вопрос?"
 
         return {
             "statusCode": 200,
