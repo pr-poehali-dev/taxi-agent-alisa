@@ -11,17 +11,40 @@ const PHONE_TEL = "+79956455125";
 
 type Message = { role: "user" | "alice"; text: string; time: string };
 
-const INITIAL_MSG = "Здравствуйте! Я Алиса 🌸 Помогу подобрать машину и сразу посчитаю цену. Куда планируете поездку?";
+const DEFAULT_MSG = "Здравствуйте! Я Алиса 🌸 Помогу подобрать машину и сразу посчитаю цену. Куда планируете поездку?";
 
 const formatTime = () => {
   const d = new Date();
   return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 };
 
+const getUtmContext = () => {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const utm: Record<string, string> = {};
+  ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].forEach((k) => {
+    const v = params.get(k);
+    if (v && !v.includes("{")) utm[k] = v;
+  });
+  return Object.keys(utm).length > 0 ? utm : null;
+};
+
+const buildInitialGreeting = (utm: Record<string, string> | null): string => {
+  if (!utm) return DEFAULT_MSG;
+  const term = utm.utm_term || utm.utm_content || utm.utm_campaign;
+  if (term) {
+    const cleaned = decodeURIComponent(term).replace(/[+_-]/g, " ").trim();
+    return `Здравствуйте! Я Алиса 🌸 Вижу, вы искали «${cleaned}» — помогу подобрать авто и сразу посчитаю цену. Подскажите точный маршрут?`;
+  }
+  return "Здравствуйте! Я Алиса 🌸 Спасибо, что зашли к нам! Помогу подобрать машину и быстро посчитаю стоимость. Куда планируете поездку?";
+};
+
 export default function Index() {
   const [splashDone, setSplashDone] = useState(false);
   const [splashFading, setSplashFading] = useState(false);
-  const initialMsg: Message = { role: "alice", text: INITIAL_MSG, time: formatTime() };
+  const utmRef = useRef<Record<string, string> | null>(getUtmContext());
+  const greeting = buildInitialGreeting(utmRef.current);
+  const initialMsg: Message = { role: "alice", text: greeting, time: formatTime() };
   const [messages, setMessages] = useState<Message[]>([initialMsg]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -51,7 +74,7 @@ export default function Index() {
       const res = await fetch(ALICE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated }),
+        body: JSON.stringify({ messages: updated, utm: utmRef.current }),
       });
       const data = await res.json();
       const aliceMsg: Message = { role: "alice", text: data.reply, time: formatTime() };

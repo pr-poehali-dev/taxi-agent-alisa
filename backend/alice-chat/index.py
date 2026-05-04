@@ -90,19 +90,28 @@ SYSTEM_PROMPT = """Ты — Алиса, живая девушка-менедже
 ВНИМАНИЕ: возвращай ТОЛЬКО валидный JSON, без markdown-обёрток ```json```, без лишнего текста."""
 
 
-def send_to_telegram(order: dict) -> bool:
+def send_to_telegram(order: dict, utm: dict = None) -> bool:
     """Отправка заявки в Telegram-бот"""
     try:
         text = (
             "🚖 *НОВАЯ ЗАЯВКА — Такси Дальняк*\n\n"
-            f"📍 *Откуда:* {order.get('from', '—')}\n"
-            f"📍 *Куда:* {order.get('to', '—')}\n"
-            f"📅 *Дата/время:* {order.get('date', '—')}\n"
-            f"👥 *Пассажиров:* {order.get('passengers', '—')}\n"
-            f"🚗 *Класс:* {order.get('car_class', '—')}\n"
-            f"💰 *Стоимость:* {order.get('price', '—')}\n"
-            f"📱 *Телефон:* {order.get('phone', '—')}"
+            f"📍 *Откуда:* {order.get('from') or '—'}\n"
+            f"📍 *Куда:* {order.get('to') or '—'}\n"
+            f"📅 *Дата/время:* {order.get('date') or '—'}\n"
+            f"👥 *Пассажиров:* {order.get('passengers') or '—'}\n"
+            f"🚗 *Класс:* {order.get('car_class') or '—'}\n"
+            f"💰 *Стоимость:* {order.get('price') or '—'}\n"
+            f"📱 *Телефон:* {order.get('phone') or '—'}"
         )
+        if utm:
+            text += "\n\n📊 *Источник:*"
+            if utm.get("utm_source"):
+                text += f"\n• Источник: {utm['utm_source']}"
+            if utm.get("utm_campaign"):
+                text += f"\n• Кампания: {utm['utm_campaign']}"
+            term = utm.get("utm_term") or utm.get("utm_content")
+            if term:
+                text += f"\n• Запрос: {term}"
         url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
         payload = json.dumps({
             "chat_id": TG_CHAT_ID,
@@ -176,6 +185,7 @@ def handler(event: dict, context) -> dict:
     try:
         body = json.loads(event.get("body", "{}"))
         messages = body.get("messages", [])
+        utm = body.get("utm") or {}
 
         api_key = os.environ.get("OPENAI_API_KEY", "")
         if not api_key:
@@ -187,7 +197,18 @@ def handler(event: dict, context) -> dict:
                 }, ensure_ascii=False),
             }
 
-        openai_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        system_content = SYSTEM_PROMPT
+        if utm:
+            utm_lines = []
+            term = utm.get("utm_term") or utm.get("utm_content") or utm.get("utm_campaign") or ""
+            if term:
+                utm_lines.append(f"Поисковый запрос клиента: «{term}»")
+            if utm.get("utm_source"):
+                utm_lines.append(f"Источник трафика: {utm['utm_source']}")
+            if utm_lines:
+                system_content += "\n\n📌 КОНТЕКСТ КЛИЕНТА (учитывай в общении):\n" + "\n".join(utm_lines) + "\n\nКлиент пришёл с этого запроса — постарайся опираться на него при первых уточнениях."
+
+        openai_messages = [{"role": "system", "content": system_content}]
         for msg in messages[-20:]:
             openai_messages.append({
                 "role": "user" if msg["role"] == "user" else "assistant",
@@ -233,7 +254,7 @@ def handler(event: dict, context) -> dict:
         cleaned_reply, order = parse_alice_response(reply)
         order_sent = False
         if order:
-            order_sent = send_to_telegram(order)
+            order_sent = send_to_telegram(order, utm)
             print(f"Order extracted, sent: {order_sent}")
         else:
             print(f"No order. Reply length={len(cleaned_reply)}")
