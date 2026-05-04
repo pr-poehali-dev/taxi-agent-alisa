@@ -1,5 +1,6 @@
 import json
 import os
+import traceback
 import urllib.request
 import urllib.error
 
@@ -90,9 +91,17 @@ def handler(event: dict, context) -> dict:
             method="POST",
         )
 
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            reply = data["choices"][0]["message"]["content"].strip()
+        try:
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                reply = data["choices"][0]["message"]["content"].strip()
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode("utf-8", errors="ignore")
+            print(f"OpenAI HTTPError {he.code}: {err_body}")
+            raise
+        except Exception as inner:
+            print(f"OpenAI call failed: {type(inner).__name__}: {inner}")
+            raise
 
         return {
             "statusCode": 200,
@@ -100,7 +109,9 @@ def handler(event: dict, context) -> dict:
             "body": json.dumps({"reply": reply}, ensure_ascii=False),
         }
 
-    except Exception:
+    except Exception as e:
+        print(f"Handler error: {type(e).__name__}: {e}")
+        print(traceback.format_exc())
         return {
             "statusCode": 200,
             "headers": {**cors_headers, "Content-Type": "application/json"},
