@@ -75,14 +75,14 @@ def handler(event: dict, context) -> dict:
             })
 
         payload = json.dumps({
-            "model": "gpt-4o-mini",
+            "model": "deepseek-chat",
             "messages": openai_messages,
-            "max_tokens": 300,
+            "max_tokens": 400,
             "temperature": 0.8,
         }).encode("utf-8")
 
         req = urllib.request.Request(
-            "https://api.openai.com/v1/chat/completions",
+            "https://api.deepseek.com/v1/chat/completions",
             data=payload,
             headers={
                 "Authorization": f"Bearer {api_key}",
