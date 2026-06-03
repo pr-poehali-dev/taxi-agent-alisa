@@ -1,296 +1,482 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 
-const ALICE_URL = "https://functions.poehali.dev/43a3c28f-95df-4c13-b492-834ef01e281a";
-const LOGO_URL = "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/60a2f7e9-50aa-4be3-898b-2395df495665.jpg";
-const MAX_LOGO = "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/92e5468b-6fd2-45a8-b58a-18932a92731e.png";
-const TG_URL = "https://t.me/Mezhgorod1816";
-const MAX_URL = "https://max.ru/u/f9LHodD0cOKyxRQqeR7xEDH25l9Nm8fSUsA2_1MzFQHNuvQmIYwwPFlMh3s";
-const PHONE_DISPLAY = "8 (995) 645-51-25";
-const PHONE_TEL = "+79956455125";
+const TG_URL = "https://t.me/guzaerovav";
+const MAX_URL = "https://max.ru/u/f9LHodD0cOJ1F_v7tnC7DIg21I2x3v2AngQPF4QHozDLLMqNxBT1T7-MisE";
+const PHONE_DISPLAY = "8 (909) 056-46-48";
+const PHONE_TEL = "+79090564648";
+const HERO_IMG = "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/files/2bd393bd-456c-4bdd-a2bc-0a64066d2120.jpg";
 
-type Message = { role: "user" | "alice"; text: string; time: string };
+const ROUTES = [
+  { from: "Москва", to: "Воронеж", km: 520 },
+  { from: "Москва", to: "Белгород", km: 695 },
+  { from: "Москва", to: "Ростов-на-Дону", km: 1080 },
+  { from: "Санкт-Петербург", to: "Москва", km: 710 },
+  { from: "Воронеж", to: "Ровеньки", km: 340 },
+  { from: "Белгород", to: "Ровеньки", km: 180 },
+  { from: "Москва", to: "Липецк", km: 430 },
+  { from: "Москва", to: "Курск", km: 540 },
+  { from: "Воронеж", to: "Белгород", km: 215 },
+  { from: "Москва", to: "Старый Оскол", km: 620 },
+  { from: "Москва", to: "Тула", km: 185 },
+  { from: "Москва", to: "Орёл", km: 370 },
+];
 
-const DEFAULT_MSG = "Здравствуйте! Я Алиса 🌸 Помогу подобрать машину и сразу посчитаю цену. Куда планируете поездку?";
+const REVIEWS = [
+  {
+    name: "Анна К.",
+    city: "Москва → Воронеж",
+    text: "Отличная поездка! Водитель был вежлив, машина чистая и комфортная. Выехали вовремя, приехали даже раньше. Обязательно закажу снова!",
+    stars: 5,
+    date: "март 2025",
+  },
+  {
+    name: "Дмитрий М.",
+    city: "Белгород → Москва",
+    text: "Давно ищу надёжного перевозчика для дальних поездок. Нашёл! Цена адекватная, комфорт на высоте — кресло раскладывается, можно поспать в дороге.",
+    stars: 5,
+    date: "февраль 2025",
+  },
+  {
+    name: "Светлана П.",
+    city: "Москва → Ростов-на-Дону",
+    text: "Ехали с мужем и двумя чемоданами. Всё поместилось, ехать комфортно. Водитель предложил остановиться пообедать — очень внимательный. Спасибо!",
+    stars: 5,
+    date: "апрель 2025",
+  },
+  {
+    name: "Игорь Т.",
+    city: "Воронеж → Ровеньки",
+    text: "Уже третий раз пользуюсь. Всегда точно в срок, никаких сюрпризов. Цена фиксированная — знаешь заранее сколько заплатишь. Рекомендую!",
+    stars: 5,
+    date: "май 2025",
+  },
+  {
+    name: "Ольга В.",
+    city: "СПб → Москва",
+    text: "Отличный сервис! Удобный просторный салон, водитель профессиональный. Ехали ночью — всё прошло спокойно. Добрались с комфортом.",
+    stars: 5,
+    date: "январь 2025",
+  },
+  {
+    name: "Александр Н.",
+    city: "Москва → Старый Оскол",
+    text: "Заказывал срочно, договорились быстро. Выехали через 2 часа. Водитель вёл аккуратно, машина BMW — кожа, климат-контроль. Всё на уровне!",
+    stars: 5,
+    date: "март 2025",
+  },
+];
 
-const formatTime = () => {
-  const d = new Date();
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-};
+const PRICE_PER_KM = 32;
+const MIN_KM = 200;
 
-const getUtmContext = () => {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
-  const utm: Record<string, string> = {};
-  ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"].forEach((k) => {
-    const v = params.get(k);
-    if (v && !v.includes("{")) utm[k] = v;
-  });
-  return Object.keys(utm).length > 0 ? utm : null;
-};
+const formatPrice = (n: number) =>
+  n.toLocaleString("ru-RU") + " ₽";
 
-const buildInitialGreeting = (utm: Record<string, string> | null): string => {
-  if (!utm) return DEFAULT_MSG;
-  const term = utm.utm_term || utm.utm_content || utm.utm_campaign;
-  if (term) {
-    const cleaned = decodeURIComponent(term).replace(/[+_-]/g, " ").trim();
-    return `Здравствуйте! Я Алиса 🌸 Вижу, вы искали «${cleaned}» — помогу подобрать авто и сразу посчитаю цену. Подскажите точный маршрут?`;
-  }
-  return "Здравствуйте! Я Алиса 🌸 Спасибо, что зашли к нам! Помогу подобрать машину и быстро посчитаю стоимость. Куда планируете поездку?";
-};
+type Section = "home" | "routes" | "reviews" | "calc";
 
 export default function Index() {
-  const [splashDone, setSplashDone] = useState(false);
-  const [splashFading, setSplashFading] = useState(false);
-  const utmRef = useRef<Record<string, string> | null>(getUtmContext());
-  const sessionIdRef = useRef<string>(
-    (typeof window !== "undefined" && (window.sessionStorage.getItem("alice_session") ||
-      (() => {
-        const id = "s_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-        window.sessionStorage.setItem("alice_session", id);
-        return id;
-      })())) || "anon"
-  );
-  const greeting = buildInitialGreeting(utmRef.current);
-  const initialMsg: Message = { role: "alice", text: greeting, time: formatTime() };
-  const [messages, setMessages] = useState<Message[]>([initialMsg]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const historyRef = useRef<Message[]>([initialMsg]);
+  const [section, setSection] = useState<Section>("home");
+  const [km, setKm] = useState(300);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const t1 = setTimeout(() => setSplashFading(true), 2200);
-    const t2 = setTimeout(() => setSplashDone(true), 2900);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, []);
+  const price = km >= MIN_KM ? km * PRICE_PER_KM : null;
 
-  useEffect(() => {
-    const onLeave = () => {
-      try {
-        const blob = new Blob(
-          [JSON.stringify({ session_id: sessionIdRef.current })],
-          { type: "application/json" }
-        );
-        navigator.sendBeacon(
-          "https://functions.poehali.dev/c1001ea1-8ce4-4812-a3e2-9488343a7660?action=close",
-          blob
-        );
-      } catch {
-        /* ignore */
-      }
-    };
-    window.addEventListener("pagehide", onLeave);
-    window.addEventListener("beforeunload", onLeave);
-    return () => {
-      window.removeEventListener("pagehide", onLeave);
-      window.removeEventListener("beforeunload", onLeave);
-    };
-  }, []);
+  const navItems: { id: Section; label: string }[] = [
+    { id: "home", label: "Главная" },
+    { id: "routes", label: "Маршруты" },
+    { id: "reviews", label: "Отзывы" },
+    { id: "calc", label: "Калькулятор" },
+  ];
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
-
-  const sendMessage = async () => {
-    const trimmed = input.trim();
-    if (!trimmed || isTyping) return;
-    const newMsg: Message = { role: "user", text: trimmed, time: formatTime() };
-    const updated = [...historyRef.current, newMsg];
-    historyRef.current = updated;
-    setMessages([...updated]);
-    setInput("");
-    setIsTyping(true);
-    try {
-      const res = await fetch(ALICE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated, utm: utmRef.current, session_id: sessionIdRef.current }),
-      });
-      const data = await res.json();
-      const aliceMsg: Message = { role: "alice", text: data.reply, time: formatTime() };
-      historyRef.current = [...updated, aliceMsg];
-      const next = [...historyRef.current];
-      if (data.order_sent) {
-        const sysNote: Message = {
-          role: "alice",
-          text: "✅ Заявка отправлена менеджеру. Перезвонит в течение 15 минут!",
-          time: formatTime(),
-        };
-        historyRef.current = [...historyRef.current, sysNote];
-        next.push(sysNote);
-      }
-      setMessages(next);
-    } catch {
-      const err: Message = { role: "alice", text: "У нас небольшая заминка. Оставьте номер телефона — менеджер перезвонит в течение 15 минут!", time: formatTime() };
-      historyRef.current = [...updated, err];
-      setMessages([...historyRef.current]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  const go = (s: Section) => {
+    setSection(s);
+    setMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <div className="h-screen flex flex-col bg-warm-white text-charcoal font-body overflow-hidden">
+    <div className="min-h-screen bg-[#0a0d12] text-white font-sans">
+      {/* NAV */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0a0d12]/95 backdrop-blur border-b border-white/10">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <button onClick={() => go("home")} className="flex items-center gap-2">
+            <span className="text-2xl font-black tracking-tight text-white">ДАЛЬНЯК</span>
+            <span className="text-xs text-amber-400 font-semibold tracking-widest uppercase">такси</span>
+          </button>
 
-      {/* SPLASH */}
-      {!splashDone && (
-        <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-taxi-yellow transition-opacity duration-700 ${splashFading ? "opacity-0" : "opacity-100"}`}>
-          <div className="flex flex-col items-center gap-6 animate-splash-in">
-            <img src={LOGO_URL} alt="Такси Дальняк" className="w-44 h-44 object-contain rounded-3xl shadow-2xl" />
-            <div className="text-center">
-              <p className="text-black/60 text-sm tracking-[0.3em] uppercase font-medium">По всей России</p>
-              <p className="text-black/60 text-sm tracking-[0.3em] uppercase font-medium">и новым территориям</p>
-            </div>
-            <div className="flex gap-1.5 mt-2">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="w-2 h-2 rounded-full bg-black/30 animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-              ))}
-            </div>
+          {/* Desktop nav */}
+          <div className="hidden md:flex items-center gap-1">
+            {navItems.map((n) => (
+              <button
+                key={n.id}
+                onClick={() => go(n.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  section === n.id
+                    ? "bg-amber-400 text-black"
+                    : "text-white/70 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {n.label}
+              </button>
+            ))}
           </div>
-        </div>
-      )}
 
-      {/* HEADER */}
-      <header className="flex items-center justify-between px-3 md:px-6 py-2.5 bg-white border-b border-stone-200 shadow-sm shrink-0 z-20">
-        <div className="flex items-center gap-3">
-          <img src={LOGO_URL} alt="Такси Дальняк" className="h-10 w-10 object-contain rounded-xl" />
-          <div className="hidden sm:block">
-            <p className="font-display font-bold text-sm text-charcoal leading-tight">Такси Дальняк</p>
-            <p className="text-[11px] text-stone-500 leading-tight">Межгород · По всей России</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <a
-            href={TG_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Telegram"
-            className="w-10 h-10 rounded-full bg-tg-blue text-white flex items-center justify-center hover:bg-tg-blue/90 transition-colors active:scale-95 shadow-sm"
+          {/* Mobile burger */}
+          <button
+            className="md:hidden p-2 rounded-lg text-white/80 hover:bg-white/10"
+            onClick={() => setMenuOpen(!menuOpen)}
           >
-            <Icon name="Send" size={17} />
-          </a>
-          <a
-            href={MAX_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="МАКС"
-            className="w-10 h-10 rounded-full overflow-hidden hover:scale-105 transition-transform active:scale-95 shadow-sm bg-white"
-          >
-            <img src={MAX_LOGO} alt="МАКС" className="w-full h-full object-cover" />
-          </a>
-          <a
-            href={`tel:${PHONE_TEL}`}
-            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-taxi-yellow text-black rounded-xl text-sm font-bold hover:bg-taxi-yellow/80 transition-colors active:scale-95 shadow-sm"
-          >
-            <Icon name="Phone" size={15} />
-            <span className="hidden sm:inline">{PHONE_DISPLAY}</span>
-          </a>
-        </div>
-      </header>
-
-      {/* CHAT — full screen messenger */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-
-        {/* Chat top bar */}
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-tg-chatbar border-b border-stone-200 shadow-sm shrink-0">
-          <div className="relative shrink-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-taxi-yellow to-amber-500 flex items-center justify-center text-lg font-bold text-black shadow-md">А</div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-charcoal text-[15px] leading-tight">Алиса</p>
-            <p className="text-xs text-tg-blue leading-tight">в сети</p>
-          </div>
-          <button className="w-9 h-9 rounded-full hover:bg-stone-200 flex items-center justify-center transition-colors text-stone-500">
-            <Icon name="MoreVertical" size={18} />
+            <Icon name={menuOpen ? "X" : "Menu"} size={24} />
           </button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-3 md:px-6 py-4 chat-bg">
-          <div className="max-w-3xl mx-auto space-y-1.5">
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-white/10 bg-[#0a0d12] px-4 py-3 flex flex-col gap-1">
+            {navItems.map((n) => (
+              <button
+                key={n.id}
+                onClick={() => go(n.id)}
+                className={`w-full text-left px-4 py-3 rounded-xl text-base font-medium transition ${
+                  section === n.id
+                    ? "bg-amber-400 text-black"
+                    : "text-white/80 hover:bg-white/10"
+                }`}
+              >
+                {n.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </nav>
 
-            <div className="flex justify-center my-3">
-              <span className="bg-white/80 backdrop-blur text-[11px] text-stone-500 px-3 py-1 rounded-full shadow-sm">
-                Сегодня
-              </span>
-            </div>
-
-            {messages.map((msg, i) => {
-              const prev = messages[i - 1];
-              const showAvatar = msg.role === "alice" && (!prev || prev.role !== "alice");
-              const isUser = msg.role === "user";
-              return (
-                <div key={i} className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"} animate-msg-in`}>
-                  {!isUser && (
-                    <div className={`w-7 h-7 shrink-0 ${showAvatar ? "" : "invisible"}`}>
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-taxi-yellow to-amber-500 flex items-center justify-center text-[11px] font-bold text-black">А</div>
-                    </div>
-                  )}
-                  <div className={`relative max-w-[80%] md:max-w-[65%] px-3 py-2 text-[15px] leading-snug shadow-sm whitespace-pre-wrap ${
-                    isUser
-                      ? "bg-tg-bubble-out text-charcoal rounded-2xl rounded-br-md"
-                      : "bg-white text-charcoal rounded-2xl rounded-bl-md"
-                  }`}>
-                    <span>{msg.text}</span>
-                    <span className={`inline-flex items-center gap-0.5 ml-2 text-[10px] ${isUser ? "text-stone-500" : "text-stone-400"} float-right mt-1`}>
-                      {msg.time}
-                      {isUser && <Icon name="CheckCheck" size={12} className="text-tg-blue" />}
-                    </span>
-                  </div>
+      <div className="pt-16">
+        {/* ========== HOME ========== */}
+        {section === "home" && (
+          <>
+            {/* Hero */}
+            <div className="relative min-h-[92vh] flex items-center justify-center overflow-hidden">
+              <img
+                src={HERO_IMG}
+                alt="Комфортное такси"
+                className="absolute inset-0 w-full h-full object-cover opacity-40"
+                loading="eager"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#0a0d12]/60 via-transparent to-[#0a0d12]" />
+              <div className="relative z-10 text-center px-4 max-w-2xl mx-auto">
+                <div className="inline-block bg-amber-400/20 border border-amber-400/40 rounded-full px-4 py-1 text-amber-400 text-sm font-semibold mb-6 tracking-wide">
+                  Межгород по всей России
                 </div>
-              );
-            })}
+                <h1 className="text-4xl md:text-6xl font-black leading-tight mb-4">
+                  Такси для<br />
+                  <span className="text-amber-400">дальних поездок</span>
+                </h1>
+                <p className="text-white/70 text-lg md:text-xl mb-10 leading-relaxed">
+                  Фиксированная цена · Комфортный салон · Без пересадок
+                </p>
 
-            {isTyping && (
-              <div className="flex items-end gap-2 justify-start">
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-taxi-yellow to-amber-500 flex items-center justify-center text-[11px] font-bold text-black shrink-0">А</div>
-                <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-md shadow-sm flex gap-1 items-center">
-                  <span className="w-2 h-2 rounded-full bg-stone-400 animate-bounce [animation-delay:0ms]" />
-                  <span className="w-2 h-2 rounded-full bg-stone-400 animate-bounce [animation-delay:150ms]" />
-                  <span className="w-2 h-2 rounded-full bg-stone-400 animate-bounce [animation-delay:300ms]" />
+                {/* CTA кнопки */}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <a
+                    href={MAX_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 bg-[#005FF9] hover:bg-[#0052d6] text-white font-bold text-lg px-8 py-5 rounded-2xl transition shadow-lg shadow-blue-900/40 active:scale-95"
+                  >
+                    <Icon name="MessageCircle" size={24} />
+                    Написать в MAX
+                  </a>
+                  <a
+                    href={TG_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 bg-[#229ED9] hover:bg-[#1a8fc7] text-white font-bold text-lg px-8 py-5 rounded-2xl transition shadow-lg shadow-sky-900/40 active:scale-95"
+                  >
+                    <Icon name="Send" size={24} />
+                    Telegram
+                  </a>
+                  <a
+                    href={`tel:${PHONE_TEL}`}
+                    className="flex items-center justify-center gap-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-lg px-8 py-5 rounded-2xl transition active:scale-95"
+                  >
+                    <Icon name="Phone" size={24} />
+                    {PHONE_DISPLAY}
+                  </a>
                 </div>
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-
-        {/* Input bar */}
-        <div className="bg-tg-chatbar border-t border-stone-200 px-3 md:px-6 py-2.5 shrink-0">
-          <div className="max-w-3xl mx-auto flex items-end gap-2">
-            <button className="w-10 h-10 rounded-full hover:bg-stone-200 flex items-center justify-center text-stone-500 transition-colors shrink-0">
-              <Icon name="Paperclip" size={20} />
-            </button>
-            <div className="flex-1 bg-white rounded-3xl border border-stone-200 flex items-end px-4 py-2 shadow-sm focus-within:border-tg-blue/50 transition-colors">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKey}
-                placeholder="Сообщение"
-                rows={1}
-                className="flex-1 bg-transparent text-[15px] text-charcoal placeholder-stone-400 outline-none resize-none max-h-32 py-1"
-                style={{ minHeight: "24px" }}
-              />
-              <button className="text-stone-400 hover:text-stone-600 ml-2 transition-colors">
-                <Icon name="Smile" size={20} />
-              </button>
             </div>
-            <button
-              onClick={sendMessage}
-              disabled={isTyping || !input.trim()}
-              className="w-10 h-10 rounded-full bg-tg-blue text-white flex items-center justify-center hover:bg-tg-blue/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0 shadow-md"
-            >
-              <Icon name="Send" size={18} />
-            </button>
+
+            {/* Преимущества */}
+            <div className="max-w-5xl mx-auto px-4 py-16 grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { icon: "Shield", title: "5 лет", sub: "без срывов" },
+                { icon: "MapPin", title: "Вся Россия", sub: "любой маршрут" },
+                { icon: "Tag", title: "Фикс. цена", sub: "без сюрпризов" },
+                { icon: "Star", title: "Комфорт", sub: "премиум салон" },
+              ].map((f) => (
+                <div key={f.title} className="bg-white/5 border border-white/10 rounded-2xl p-5 text-center">
+                  <div className="flex justify-center mb-3">
+                    <div className="w-12 h-12 rounded-xl bg-amber-400/20 flex items-center justify-center">
+                      <Icon name={f.icon} size={24} className="text-amber-400" />
+                    </div>
+                  </div>
+                  <div className="font-black text-lg">{f.title}</div>
+                  <div className="text-white/50 text-sm">{f.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Как заказать */}
+            <div className="bg-white/5 border-y border-white/10">
+              <div className="max-w-5xl mx-auto px-4 py-14">
+                <h2 className="text-2xl md:text-3xl font-black text-center mb-10">Как заказать?</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                    { num: "1", text: "Напиши в MAX или Telegram маршрут и дату поездки" },
+                    { num: "2", text: "Получи точную цену и подтверждение за 15 минут" },
+                    { num: "3", text: "Садись и отдыхай — довезём комфортно и точно в срок" },
+                  ].map((s) => (
+                    <div key={s.num} className="flex gap-4 items-start">
+                      <div className="w-10 h-10 rounded-xl bg-amber-400 text-black font-black text-lg flex items-center justify-center shrink-0">
+                        {s.num}
+                      </div>
+                      <p className="text-white/80 text-base pt-1 leading-relaxed">{s.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Контакты внизу */}
+            <div className="max-w-5xl mx-auto px-4 py-16 text-center">
+              <h2 className="text-2xl md:text-3xl font-black mb-3">Готовы ехать?</h2>
+              <p className="text-white/60 mb-8">Отвечаем быстро. Пиши в удобный мессенджер</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-xl mx-auto">
+                <a
+                  href={MAX_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-3 bg-[#005FF9] hover:bg-[#0052d6] text-white font-bold text-xl px-6 py-5 rounded-2xl transition active:scale-95"
+                >
+                  <Icon name="MessageCircle" size={26} />
+                  MAX
+                </a>
+                <a
+                  href={TG_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-3 bg-[#229ED9] hover:bg-[#1a8fc7] text-white font-bold text-xl px-6 py-5 rounded-2xl transition active:scale-95"
+                >
+                  <Icon name="Send" size={26} />
+                  Telegram
+                </a>
+                <a
+                  href={`tel:${PHONE_TEL}`}
+                  className="flex-1 flex items-center justify-center gap-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xl px-6 py-5 rounded-2xl transition active:scale-95"
+                >
+                  <Icon name="Phone" size={26} />
+                  Звонок
+                </a>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ========== ROUTES ========== */}
+        {section === "routes" && (
+          <div className="max-w-5xl mx-auto px-4 py-12">
+            <h2 className="text-3xl md:text-4xl font-black mb-2">Популярные маршруты</h2>
+            <p className="text-white/50 mb-8">Цена от 32 ₽/км · Фиксированная стоимость</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {ROUTES.map((r) => {
+                const p = r.km * PRICE_PER_KM;
+                return (
+                  <div
+                    key={r.from + r.to}
+                    className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-amber-400/40 transition"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                      <span className="font-semibold text-base">{r.from}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-2 h-2 rounded-full bg-white/40 shrink-0" />
+                      <span className="font-semibold text-base text-white/70">{r.to}</span>
+                    </div>
+                    <div className="flex items-end justify-between">
+                      <div>
+                        <div className="text-2xl font-black text-amber-400">{formatPrice(p)}</div>
+                        <div className="text-white/40 text-sm">{r.km} км</div>
+                      </div>
+                      <a
+                        href={MAX_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-[#005FF9] hover:bg-[#0052d6] text-white font-bold px-4 py-2.5 rounded-xl text-sm transition active:scale-95"
+                      >
+                        Заказать
+                      </a>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-4">
+              <a
+                href={MAX_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-3 bg-[#005FF9] hover:bg-[#0052d6] text-white font-bold text-lg px-6 py-5 rounded-2xl transition active:scale-95"
+              >
+                <Icon name="MessageCircle" size={22} />
+                Нет нужного маршрута? Пишите!
+              </a>
+            </div>
           </div>
+        )}
+
+        {/* ========== REVIEWS ========== */}
+        {section === "reviews" && (
+          <div className="max-w-5xl mx-auto px-4 py-12">
+            <h2 className="text-3xl md:text-4xl font-black mb-2">Отзывы</h2>
+            <p className="text-white/50 mb-8">Нам доверяют сотни пассажиров по всей России</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {REVIEWS.map((rv, i) => (
+                <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                  <div className="flex items-center gap-1 mb-3">
+                    {Array.from({ length: rv.stars }).map((_, j) => (
+                      <Icon key={j} name="Star" size={16} className="text-amber-400 fill-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-white/80 leading-relaxed mb-4">«{rv.text}»</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <div className="font-semibold">{rv.name}</div>
+                      <div className="text-white/40">{rv.city}</div>
+                    </div>
+                    <div className="text-white/30">{rv.date}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 text-center">
+              <p className="text-white/50 mb-4">Оставьте свой отзыв в нашем чате</p>
+              <a
+                href={TG_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-[#229ED9] hover:bg-[#1a8fc7] text-white font-bold px-8 py-4 rounded-2xl text-base transition active:scale-95"
+              >
+                <Icon name="Send" size={20} />
+                Написать в Telegram
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* ========== CALCULATOR ========== */}
+        {section === "calc" && (
+          <div className="max-w-xl mx-auto px-4 py-12">
+            <h2 className="text-3xl md:text-4xl font-black mb-2">Калькулятор</h2>
+            <p className="text-white/50 mb-8">Быстрый расчёт стоимости поездки</p>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-white/60 mb-2">
+                  Расстояние (км)
+                </label>
+                <input
+                  type="number"
+                  min={200}
+                  max={3000}
+                  value={km}
+                  onChange={(e) => setKm(Number(e.target.value))}
+                  className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-4 text-xl font-bold text-white focus:outline-none focus:border-amber-400 transition"
+                  placeholder="Минимум 200 км"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="range"
+                  min={200}
+                  max={2000}
+                  step={10}
+                  value={km}
+                  onChange={(e) => setKm(Number(e.target.value))}
+                  className="w-full accent-amber-400"
+                />
+                <div className="flex justify-between text-white/30 text-xs mt-1">
+                  <span>200 км</span>
+                  <span>2 000 км</span>
+                </div>
+              </div>
+
+              <div className="bg-amber-400/10 border border-amber-400/30 rounded-xl p-5">
+                {km < MIN_KM ? (
+                  <div className="text-center">
+                    <div className="text-amber-400 font-semibold text-sm mb-1">Минимальный заказ</div>
+                    <div className="text-white font-bold text-lg">от 200 км</div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="text-white/50 text-sm mb-1">{km} км × 32 ₽/км</div>
+                    <div className="text-4xl font-black text-amber-400">{formatPrice(price!)}</div>
+                    <div className="text-white/40 text-xs mt-2">Итоговая стоимость поездки</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <a
+                  href={MAX_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 bg-[#005FF9] hover:bg-[#0052d6] text-white font-bold py-5 rounded-2xl text-base transition active:scale-95"
+                >
+                  <Icon name="MessageCircle" size={22} />
+                  MAX
+                </a>
+                <a
+                  href={TG_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1a8fc7] text-white font-bold py-5 rounded-2xl text-base transition active:scale-95"
+                >
+                  <Icon name="Send" size={22} />
+                  Telegram
+                </a>
+              </div>
+
+              <a
+                href={`tel:${PHONE_TEL}`}
+                className="flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-5 rounded-2xl text-base transition active:scale-95"
+              >
+                <Icon name="Phone" size={22} />
+                {PHONE_DISPLAY}
+              </a>
+            </div>
+
+            <div className="mt-6 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white/50 leading-relaxed">
+              <strong className="text-white/70">Примечание:</strong> Расчёт ориентировочный (32 ₽/км). Точная стоимость уточняется при бронировании.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <footer className="border-t border-white/10 mt-8">
+        <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4 text-white/30 text-sm">
+          <div className="font-black text-white/50 text-base">ДАЛЬНЯК · такси</div>
+          <a href={`tel:${PHONE_TEL}`} className="text-white/50 hover:text-white transition font-semibold">
+            {PHONE_DISPLAY}
+          </a>
+          <div>Межгород по всей России</div>
         </div>
-      </main>
+      </footer>
     </div>
   );
 }
