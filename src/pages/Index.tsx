@@ -154,9 +154,15 @@ export default function Index() {
           </div>
 
           <div className="hidden lg:flex items-center gap-1.5">
+            <a href="/order" className="flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-black font-bold text-sm px-3 py-2 rounded-xl transition active:scale-95">
+              <Icon name="Plus" size={14} />Заказать
+            </a>
             <BtnMax className="px-3 py-2 text-sm rounded-xl" label="MAX" />
             <BtnTg className="px-3 py-2 text-sm rounded-xl" label="TG" />
             <BtnCall className="px-3 py-2 text-sm rounded-xl" label="Звонок" />
+            <a href="/login" className="flex items-center gap-1.5 bg-white/8 hover:bg-white/15 border border-white/15 text-white/70 hover:text-white font-semibold text-sm px-3 py-2 rounded-xl transition">
+              <Icon name="LogIn" size={14} />Войти
+            </a>
           </div>
 
           <button className="lg:hidden p-2 rounded-lg text-white/70 hover:bg-white/8" onClick={() => setMenuOpen(!menuOpen)}>
@@ -173,9 +179,15 @@ export default function Index() {
               </button>
             ))}
             <div className="pt-2 flex flex-col gap-2">
+              <a href="/order" className="flex items-center justify-center gap-2 bg-amber-400 text-black font-bold py-3.5 rounded-xl">
+                <Icon name="Plus" size={18} />Заказать такси
+              </a>
               <BtnMax className="py-3.5 rounded-xl text-base" label="Написать в MAX" />
               <BtnTg className="py-3.5 rounded-xl text-base" label="Написать в Telegram" />
               <BtnCall className="py-3.5 rounded-xl text-base" label="Позвонить" />
+              <a href="/login" className="flex items-center justify-center gap-2 bg-white/8 border border-white/15 text-white/70 font-semibold py-3 rounded-xl">
+                <Icon name="LogIn" size={16} />Войти в систему
+              </a>
             </div>
           </div>
         )}

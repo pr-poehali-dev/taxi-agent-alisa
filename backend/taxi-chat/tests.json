@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "GET messages without token param returns 400",
+      "method": "GET",
+      "path": "/?action=messages",
+      "expectedStatus": 400
+    },
+    {
+      "name": "POST send without text returns 400",
+      "method": "POST",
+      "path": "/?action=send",
+      "body": {
+        "token": "abc123"
+      },
+      "expectedStatus": 400
+    }
+  ]
+}
