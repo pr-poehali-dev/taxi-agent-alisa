@@ -11,421 +11,293 @@ import {
   STATUS_COLORS,
 } from "@/lib/api";
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
-
-function fmtDate(d: string) {
-  if (!d) return "—";
-  return new Date(d).toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function StatusBadge({ status }: { status: TaxiOrder["status"] }) {
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${STATUS_COLORS[status]}`}>
-      {STATUS_LABELS[status]}
-    </span>
-  );
-}
-
-// ─── star rating ──────────────────────────────────────────────────────────────
-
-function StarRating({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  const [hover, setHover] = useState(0);
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          onMouseEnter={() => setHover(n)}
-          onMouseLeave={() => setHover(0)}
-          className="transition"
-        >
-          <Icon
-            name="Star"
-            size={28}
-            className={
-              n <= (hover || value)
-                ? "text-amber-400 fill-amber-400"
-                : "text-white/20"
-            }
-          />
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── review form ──────────────────────────────────────────────────────────────
-
-function ReviewForm({
-  token,
-  passengerName,
-  onDone,
-}: {
-  token: string;
-  passengerName: string;
-  onDone: () => void;
-}) {
-  const [rating, setRating] = useState(5);
-  const [text, setText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [done, setDone] = useState(false);
-
-  async function submit() {
-    setLoading(true);
-    setErr("");
-    try {
-      const res = await fetch(`${API_REVIEWS}?action=create`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          rating,
-          text,
-          passenger_name: passengerName,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setErr(data.error || "Ошибка"); return; }
-      setDone(true);
-      setTimeout(onDone, 2000);
-    } catch {
-      setErr("Ошибка сети");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (done) {
-    return (
-      <div className="bg-green-500/10 border border-green-500/25 rounded-2xl p-5 flex items-center gap-3">
-        <Icon name="CheckCircle" size={24} className="text-green-400 shrink-0" />
-        <p className="text-green-300 font-semibold">Спасибо за отзыв!</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Icon name="Star" size={18} className="text-amber-400" />
-        <p className="font-bold text-white">Оставьте отзыв о поездке</p>
-      </div>
-
-      <StarRating value={rating} onChange={setRating} />
-
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="Ваш комментарий…"
-        rows={3}
-        className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-amber-400 transition resize-none text-sm"
-      />
-
-      {err && (
-        <p className="text-red-300 text-sm">{err}</p>
-      )}
-
-      <button
-        onClick={submit}
-        disabled={loading}
-        className="bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-black font-bold rounded-xl py-3 flex items-center justify-center gap-2 transition"
-      >
-        {loading ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Send" size={16} />}
-        Отправить отзыв
-      </button>
-    </div>
-  );
-}
-
-// ─── main ─────────────────────────────────────────────────────────────────────
-
 export default function ChatPage() {
   const { token } = useParams<{ token: string }>();
-
   const [order, setOrder] = useState<TaxiOrder | null>(null);
-  const [orderError, setOrderError] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
-  const [senderName, setSenderName] = useState(() => localStorage.getItem("chat_passenger_name") || "");
+  const [senderName, setSenderName] = useState(
+    () => localStorage.getItem("passenger_name") || ""
+  );
   const [namePrompt, setNamePrompt] = useState(false);
   const [pendingText, setPendingText] = useState("");
+  const [loadingOrder, setLoadingOrder] = useState(true);
   const [sending, setSending] = useState(false);
   const [reviewDone, setReviewDone] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewSent, setReviewSent] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // load order
-  useEffect(() => {
+  const loadOrder = useCallback(async () => {
     if (!token) return;
-    fetch(`${API_ORDERS}?action=get&token=${token}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.order) setOrder(d.order);
-        else setOrderError(d.error || "Заказ не найден");
-      })
-      .catch(() => setOrderError("Ошибка сети"));
+    try {
+      const res = await fetch(`${API_ORDERS}/?action=get&token=${token}`);
+      if (res.ok) {
+        const data = await res.json();
+        setOrder(data.order ?? data);
+      }
+    } finally {
+      setLoadingOrder(false);
+    }
   }, [token]);
 
-  // load & poll messages
   const loadMessages = useCallback(async () => {
     if (!token) return;
-    try {
-      const res = await fetch(`${API_CHAT}?action=messages&token=${token}`);
-      if (!res.ok) return;
+    const res = await fetch(`${API_CHAT}/?action=messages&token=${token}`);
+    if (res.ok) {
       const data = await res.json();
       setMessages(data.messages ?? []);
-    } catch { /* ignore */ }
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    }
   }, [token]);
 
   useEffect(() => {
+    loadOrder();
     loadMessages();
-    const id = setInterval(loadMessages, 5000);
-    return () => clearInterval(id);
-  }, [loadMessages]);
+    const interval = setInterval(loadMessages, 5000);
+    return () => clearInterval(interval);
+  }, [loadOrder, loadMessages]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  async function doSend(msgText: string, name: string) {
-    if (!token || !msgText.trim()) return;
+  const doSend = async (nameToUse: string, msg: string) => {
+    if (!token || !msg.trim()) return;
     setSending(true);
     try {
-      await fetch(`${API_CHAT}?action=send`, {
+      await fetch(`${API_CHAT}/?action=send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, text: msgText.trim(), sender_name: name }),
+        body: JSON.stringify({ token, text: msg.trim(), sender_name: nameToUse }),
       });
       setText("");
-      await loadMessages();
-    } catch { /* ignore */ } finally {
+      loadMessages();
+    } finally {
       setSending(false);
     }
-  }
+  };
 
-  function handleSend() {
-    if (!text.trim()) return;
-    if (!senderName.trim()) {
-      setPendingText(text);
+  const handleSend = () => {
+    const msg = text.trim();
+    if (!msg) return;
+    if (!senderName) {
+      setPendingText(msg);
       setNamePrompt(true);
       return;
     }
-    doSend(text, senderName);
-  }
+    doSend(senderName, msg);
+  };
 
-  function handleKey(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  }
-
-  function confirmName(name: string) {
-    const trimmed = name.trim() || "Пассажир";
-    setSenderName(trimmed);
-    localStorage.setItem("chat_passenger_name", trimmed);
+  const handleNameConfirm = (name: string) => {
+    localStorage.setItem("passenger_name", name);
+    setSenderName(name);
     setNamePrompt(false);
-    doSend(pendingText, trimmed);
+    doSend(name, pendingText);
     setPendingText("");
+  };
+
+  const handleReview = async () => {
+    if (!token) return;
+    const res = await fetch(`${API_REVIEWS}/?action=create`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        rating,
+        text: reviewText,
+        passenger_name: senderName || "Пассажир",
+      }),
+    });
+    if (res.ok) setReviewSent(true);
+  };
+
+  if (loadingOrder) {
+    return (
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
+        <div className="text-white/40">Загрузка...</div>
+      </div>
+    );
   }
 
-  // bubble style
-  function bubbleCls(role: string) {
-    if (role === "passenger") return "self-end bg-amber-500/25 text-amber-50 rounded-br-sm";
-    if (role === "dispatcher") return "self-start bg-white/10 text-white/90 rounded-bl-sm";
-    return "self-start bg-purple-500/20 text-purple-100 rounded-bl-sm";
-  }
-
-  const showReviewForm =
-    order?.status === "done" && !reviewDone;
-
-  // ── error state ──
-  if (orderError) {
+  if (!order) {
     return (
       <div className="min-h-screen bg-[#0d1117] flex items-center justify-center px-4">
-        <div className="text-center flex flex-col items-center gap-4">
-          <Icon name="AlertCircle" size={40} className="text-red-400" />
-          <p className="text-white font-bold text-lg">{orderError}</p>
-          <a href="/order" className="text-amber-400 underline text-sm">Оформить новый заказ</a>
+        <div className="text-center">
+          <div className="text-white/40 mb-3">Заказ не найден</div>
+          <a href="/" className="text-amber-400 hover:underline">На главную</a>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-[#0d1117] flex flex-col">
-      {/* header */}
-      <header className="shrink-0 bg-[#0d1117]/95 backdrop-blur border-b border-white/8 px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0">
-            <Icon name="Car" size={16} className="text-black" />
-          </div>
-          <span className="font-black text-white">
-            Комфорт<span className="text-amber-400">Такси</span>
-          </span>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-lg mx-auto px-4 py-4 flex flex-col gap-4">
-          {/* order info card */}
-          {order ? (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 shrink-0">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2 font-bold text-white">
-                  <Icon name="MapPin" size={15} className="text-amber-400 shrink-0" />
-                  {order.from_city}
-                  <Icon name="ArrowRight" size={14} className="text-white/30" />
-                  {order.to_city}
-                </div>
-                <StatusBadge status={order.status} />
+    <div className="min-h-screen bg-[#0d1117] flex flex-col">
+      {/* Header */}
+      <div className="bg-[#0d1117]/95 border-b border-white/8 px-4 py-3 shrink-0">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-start justify-between gap-3 mb-2">
+            <div>
+              <div className="font-bold text-white">
+                {order.from_city} → {order.to_city}
               </div>
-              <div className="flex flex-wrap gap-3 text-xs text-white/50">
-                <span className="flex items-center gap-1">
-                  <Icon name="Calendar" size={11} />
-                  {fmtDate(order.trip_date)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Icon name="Users" size={11} />
-                  {order.passengers_count} пас.
-                </span>
-                {order.price && (
-                  <span className="flex items-center gap-1 text-amber-400/80">
-                    <Icon name="Banknote" size={11} />
-                    {order.price.toLocaleString("ru-RU")} ₽
-                  </span>
-                )}
-                {order.driver?.full_name && (
-                  <span className="flex items-center gap-1 text-purple-300/80">
-                    <Icon name="User" size={11} />
-                    {order.driver.full_name}
-                    {order.driver.phone && ` · ${order.driver.phone}`}
-                  </span>
-                )}
-              </div>
+              <div className="text-white/40 text-sm">{order.trip_date} · {order.passenger_name}</div>
             </div>
-          ) : (
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-3">
-              <Icon name="Loader2" size={18} className="animate-spin text-amber-400" />
-              <span className="text-white/50 text-sm">Загружаем заказ…</span>
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${STATUS_COLORS[order.status]}`}>
+              {STATUS_LABELS[order.status]}
+            </span>
+          </div>
+          {order.driver && (
+            <div className="text-white/40 text-xs">
+              Водитель: {order.driver.full_name}
+              {order.driver.phone && (
+                <a href={`tel:${order.driver.phone}`} className="text-amber-400 ml-2">
+                  {order.driver.phone}
+                </a>
+              )}
             </div>
           )}
-
-          {/* review form */}
-          {showReviewForm && order && (
-            <ReviewForm
-              token={token!}
-              passengerName={senderName || order.passenger_name}
-              onDone={() => setReviewDone(true)}
-            />
-          )}
-
-          {/* messages */}
-          <div className="flex flex-col gap-2 pb-2">
-            {messages.length === 0 && (
-              <p className="text-center text-white/25 text-sm py-8">
-                Здесь будет переписка с диспетчером
-              </p>
-            )}
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={`max-w-[78%] rounded-2xl px-3 py-2 flex flex-col gap-0.5 ${bubbleCls(m.sender_role)}`}
-              >
-                <span className="text-[10px] opacity-60 font-semibold">{m.sender_name}</span>
-                <span className="text-sm">{m.text}</span>
-                <span className="text-[10px] opacity-40 self-end">
-                  {m.created_at ? new Date(m.created_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : ""}
-                </span>
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
         </div>
       </div>
 
-      {/* input bar */}
-      <div className="shrink-0 border-t border-white/8 px-4 py-3 bg-[#0d1117]">
-        <div className="max-w-lg mx-auto flex gap-2">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="max-w-2xl mx-auto space-y-3">
+          {messages.length === 0 && (
+            <div className="text-center text-white/25 py-10 text-sm">
+              Напишите сообщение диспетчеру
+            </div>
+          )}
+          {messages.map((m) => {
+            const isMe = m.sender_role === "passenger";
+            return (
+              <div key={m.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                  isMe
+                    ? "bg-amber-400 text-black"
+                    : m.sender_role === "driver"
+                    ? "bg-purple-500/20 border border-purple-500/30 text-white"
+                    : "bg-white/8 border border-white/10 text-white"
+                }`}>
+                  {!isMe && (
+                    <div className="text-xs opacity-60 mb-1 font-semibold">
+                      {m.sender_role === "driver" ? "Водитель" : "Диспетчер"}
+                      {m.sender_name ? ` (${m.sender_name})` : ""}
+                    </div>
+                  )}
+                  <div className="text-sm leading-relaxed">{m.text}</div>
+                  <div className={`text-xs mt-1 ${isMe ? "text-black/50" : "text-white/30"}`}>
+                    {new Date(m.created_at).toLocaleTimeString("ru", { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={bottomRef} />
+        </div>
+      </div>
+
+      {/* Review block */}
+      {order.status === "done" && !reviewDone && !reviewSent && (
+        <div className="px-4 pb-3 max-w-2xl mx-auto w-full">
+          <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-4">
+            <div className="font-semibold text-white mb-3">Поездка завершена — оставьте отзыв</div>
+            <div className="flex gap-2 mb-3">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <button key={s} onClick={() => setRating(s)} className="text-2xl">
+                  {s <= rating ? "⭐" : "☆"}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              rows={2}
+              className="w-full bg-white/8 border border-white/15 rounded-xl px-3 py-2 text-white text-sm focus:outline-none mb-3 resize-none"
+              placeholder="Ваш отзыв..."
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleReview}
+                className="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold py-2.5 rounded-xl text-sm transition"
+              >
+                Отправить отзыв
+              </button>
+              <button
+                onClick={() => setReviewDone(true)}
+                className="text-white/30 hover:text-white/50 px-3 text-sm transition"
+              >
+                Пропустить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {reviewSent && (
+        <div className="px-4 pb-3 max-w-2xl mx-auto w-full">
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-green-300 text-sm text-center">
+            Спасибо за отзыв!
+          </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="border-t border-white/8 px-4 py-3 bg-[#0d1117] shrink-0">
+        <div className="max-w-2xl mx-auto flex gap-2">
           <input
+            type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="Написать диспетчеру…"
-            className="flex-1 bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-amber-400 transition text-sm"
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+            className="flex-1 bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 transition"
+            placeholder="Написать диспетчеру..."
           />
           <button
             onClick={handleSend}
             disabled={sending || !text.trim()}
-            className="bg-amber-400 hover:bg-amber-300 disabled:opacity-40 text-black rounded-xl px-4 flex items-center justify-center transition"
+            className="bg-amber-400 hover:bg-amber-300 disabled:opacity-40 text-black font-bold px-4 py-3 rounded-xl transition active:scale-95"
           >
-            {sending
-              ? <Icon name="Loader2" size={18} className="animate-spin" />
-              : <Icon name="Send" size={18} />
-            }
+            <Icon name="Send" size={20} />
           </button>
         </div>
       </div>
 
-      {/* name prompt overlay */}
+      {/* Name prompt modal */}
       {namePrompt && (
-        <NamePrompt
-          onConfirm={confirmName}
-          onCancel={() => { setNamePrompt(false); setPendingText(""); }}
-        />
+        <NamePromptModal onConfirm={handleNameConfirm} onClose={() => setNamePrompt(false)} />
       )}
     </div>
   );
 }
 
-// ─── name prompt modal ────────────────────────────────────────────────────────
-
-function NamePrompt({
+function NamePromptModal({
   onConfirm,
-  onCancel,
+  onClose,
 }: {
   onConfirm: (name: string) => void;
-  onCancel: () => void;
+  onClose: () => void;
 }) {
   const [name, setName] = useState("");
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end justify-center p-4" onClick={onCancel}>
-      <div
-        className="w-full max-w-sm bg-[#161b22] border border-white/15 rounded-2xl p-6 flex flex-col gap-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <p className="font-bold text-white">Как вас зовут?</p>
-        <p className="text-white/50 text-sm">Укажите имя, чтобы диспетчер знал, от кого сообщение</p>
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+      <div className="bg-[#1a1f2e] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+        <h3 className="font-bold text-white mb-2">Как вас зовут?</h3>
+        <p className="text-white/40 text-sm mb-4">Чтобы диспетчер знал, кто пишет</p>
         <input
-          autoFocus
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") onConfirm(name); }}
-          placeholder="Иван"
-          className="bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/25 focus:outline-none focus:border-amber-400 transition"
+          onKeyDown={(e) => e.key === "Enter" && name.trim() && onConfirm(name.trim())}
+          autoFocus
+          className="w-full bg-white/8 border border-white/15 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 mb-4"
+          placeholder="Ваше имя"
         />
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 bg-white/8 border border-white/10 text-white/60 font-semibold rounded-xl py-3 hover:bg-white/12 transition text-sm">
-            Отмена
-          </button>
+        <div className="flex gap-2">
           <button
-            onClick={() => onConfirm(name)}
-            className="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold rounded-xl py-3 transition text-sm"
+            onClick={() => name.trim() && onConfirm(name.trim())}
+            className="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold py-3 rounded-xl transition"
           >
-            Подтвердить
+            Отправить
+          </button>
+          <button onClick={onClose} className="px-4 text-white/40 hover:text-white transition">
+            Отмена
           </button>
         </div>
       </div>

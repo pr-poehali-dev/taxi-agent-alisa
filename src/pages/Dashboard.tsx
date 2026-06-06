@@ -6,14 +6,11 @@ import DriverDashboard from "@/pages/driver/DriverDashboard";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-
-  const raw = localStorage.getItem("taxi_user");
-  const user: TaxiUser | null = raw ? (JSON.parse(raw) as TaxiUser) : null;
+  const userStr = localStorage.getItem("taxi_user");
+  const user: TaxiUser | null = userStr ? JSON.parse(userStr) : null;
 
   useEffect(() => {
-    if (!user || !localStorage.getItem("taxi_token")) {
-      navigate("/login");
-    }
+    if (!user) navigate("/login");
   }, [user, navigate]);
 
   if (!user) return null;
@@ -23,7 +20,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] flex items-center justify-center text-white">
-      Неизвестная роль: {user.role}
+      Неизвестная роль
     </div>
   );
 }
