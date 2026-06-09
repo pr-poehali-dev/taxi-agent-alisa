@@ -309,6 +309,11 @@ export default function Index() {
             "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/a4964cf0-c356-4110-a4bd-39bb4093f5a0.jpg",
             "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/442c10d7-83c6-46fb-9489-3781a56c3b49.jpg",
             "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/7f2ba0c7-f154-407f-a4ee-ca4aa10214c0.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/621938c0-71b9-42a4-88ed-778b5e78ed7f.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/1b5c394f-de62-42f1-a9f1-e57ae0939041.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/045c8751-0adc-4d17-9f17-f13449324e9e.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/e370d818-c305-4c90-bc20-a0208aacb210.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/c4879c18-0807-4660-9adc-7438908a952c.jpg",
           ].map((src, i) => (
             <div key={i} className="mb-3 break-inside-avoid rounded-2xl overflow-hidden border border-white/10">
               <img src={src} alt={`Отзыв ${i + 1}`} className="w-full h-auto block" loading="lazy" />
