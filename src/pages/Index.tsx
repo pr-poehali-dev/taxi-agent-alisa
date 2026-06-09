@@ -89,9 +89,9 @@ const TRAINING = [
 ];
 
 const HOW_STEPS = [
-  { n: "1", icon: "💬", title: "Пишете мне", desc: "В Telegram или MAX. Говорите, какая услуга интересует и ваш вопрос." },
-  { n: "2", icon: "🃏", title: "Я делаю расклад", desc: "Раскладываю карты, анализирую, готовлю развёрнутый ответ. Обычно в течение дня." },
-  { n: "3", icon: "✨", title: "Получаете ответ", desc: "Полное объяснение с пояснением каждой карты. Задаёте дополнительные вопросы — всегда отвечу." },
+  { n: "1", icon: "💬", title: "Пишете вопрос", desc: "Пишете вопрос и отправляете своё фото. Никакой предыстории — только вопрос и фото." },
+  { n: "2", icon: "🃏", title: "Я делаю расклад", desc: "Раскладываю карты и фотографирую расклад. Затем записываю аудио с подробной расшифровкой." },
+  { n: "3", icon: "🎧", title: "Получаете фото + аудио", desc: "Вы получаете фото расклада и аудиосообщение с полным разбором. Всё понятно и без лишнего." },
 ];
 
 function ContactButtons({ size = "lg" }: { size?: "sm" | "lg" }) {
@@ -295,28 +295,23 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ── МЕСТО ДЛЯ ОТЗЫВОВ ── */}
+      {/* ── ОТЗЫВЫ ── */}
       <section className="py-14 px-4 max-w-3xl mx-auto">
         <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
           Что говорят клиенты
         </h2>
-        <p className="text-white/40 text-center mb-8 text-sm">Реальные отзывы — без правок и фильтров</p>
+        <p className="text-white/40 text-center mb-8 text-sm">Скриншоты переписок — без правок и фильтров</p>
 
-        {/* Заглушка — заменим на скриншоты отзывов */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div className="columns-2 gap-3 sm:columns-3 mb-6">
           {[
-            { text: "Вероника, спасибо огромное! Расклад попал прямо в точку, всё совпало с тем, что происходит. Буду возвращаться ещё.", name: "Анна", date: "Авито" },
-            { text: "Делала матрицу судьбы — была в шоке от точности. Про предназначение и финансы — всё как будто про меня написано. Очень рекомендую!", name: "Марина", date: "Авито" },
-            { text: "Первый раз обращалась к таро, было страшно. Вероника объяснила всё понятно, без страшилок. Вопрос по работе — ответ дала чёткий.", name: "Кристина", date: "Telegram" },
-            { text: "Расклад на отношения — очень точно! Описала ситуацию, которую я никому не рассказывала. Спасибо за честность, это важно.", name: "Ольга", date: "Авито" },
-          ].map((r, i) => (
-            <div key={i} className="bg-white/4 border border-white/10 rounded-2xl p-5">
-              <div className="text-amber-400 text-sm mb-3">★★★★★</div>
-              <p className="text-white/70 text-sm leading-relaxed mb-4 italic">«{r.text}»</p>
-              <div className="flex items-center justify-between">
-                <span className="text-white/50 text-xs font-semibold">{r.name}</span>
-                <span className="text-white/25 text-xs">{r.date}</span>
-              </div>
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/c33c3406-5caa-4341-b358-f37160aedf86.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/fd3f5932-c986-423a-a06a-279e591afeb1.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/a4964cf0-c356-4110-a4bd-39bb4093f5a0.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/442c10d7-83c6-46fb-9489-3781a56c3b49.jpg",
+            "https://cdn.poehali.dev/projects/e584f286-df00-4d3a-882a-3f9b18d3eaa2/bucket/7f2ba0c7-f154-407f-a4ee-ca4aa10214c0.jpg",
+          ].map((src, i) => (
+            <div key={i} className="mb-3 break-inside-avoid rounded-2xl overflow-hidden border border-white/10">
+              <img src={src} alt={`Отзыв ${i + 1}`} className="w-full h-auto block" loading="lazy" />
             </div>
           ))}
         </div>
@@ -330,7 +325,7 @@ export default function Index() {
           <a href={TG_CHANNEL} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2 bg-white/6 border border-white/10 hover:bg-white/10 text-white text-sm font-semibold px-5 py-3 rounded-xl transition">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-[#229ED9]"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L8.32 13.617l-2.96-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.828.942z"/></svg>
-            Отзывы в Telegram-канале
+            Ещё отзывы в Telegram-канале
           </a>
         </div>
       </section>
