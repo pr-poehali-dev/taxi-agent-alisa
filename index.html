@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Такси Дальняк — Межгород по всей России</title>
-    <meta name="description" content="Такси Дальняк — надёжные поездки по всей России и новым территориям. Фиксированная цена, 5 лет без срывов."/>
+    <title>Вероника — Таролог. Расклад Таро от 550₽</title>
+    <meta name="description" content="Не откладывай — узнай своё завтра! Расклад Таро от 550₽. Ответ на любой вопрос, расклады на отношения, матрица судьбы. Вероника — таролог с рейтингом 4.9 на Авито."/>
+    <meta name="keywords" content="таро расклад, гадание таро онлайн, матрица судьбы, расклад на отношения, таролог онлайн"/>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta name="author" content="poehali.dev"/>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta property="og:title" content="Поехали!">
@@ -61,10 +62,18 @@
 
     ym(109029737, "init", {
         clickmap: true,
-        trackLinks: true,
+        trackLinks: false,
         accurateTrackBounce: true,
         webvisor: true,
         ecommerce: "dataLayer"
+    });
+
+    // Цели: клик по MAX и Telegram
+    document.addEventListener("click", function(e) {
+        var el = e.target.closest("[data-goal]");
+        if (!el) return;
+        var goal = el.getAttribute("data-goal");
+        if (goal) ym(109029737, "reachGoal", goal);
     });
 </script>
 <noscript>
