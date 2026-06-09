@@ -88,6 +88,23 @@ const TRAINING = [
   },
 ];
 
+const TOPICS = [
+  { icon: "💔", label: "Отношения", desc: "Любит ли, уйти или остаться, измена, вернуть" },
+  { icon: "💰", label: "Деньги", desc: "Почему не идут, когда ждать, стоит ли вкладывать" },
+  { icon: "💼", label: "Работа", desc: "Менять ли, конфликты, карьерный рост" },
+  { icon: "🏥", label: "Здоровье", desc: "Что влияет, когда лучше, стоит ли беспокоиться" },
+  { icon: "🔮", label: "Мистика", desc: "Порча, сглаз, привязки, воздействие извне" },
+  { icon: "🛤️", label: "Путь", desc: "Предназначение, правильно ли иду, что впереди" },
+];
+
+const FAQ = [
+  { q: "Нужно ли встречаться лично?", a: "Нет. Всё онлайн — пишете в Telegram или MAX, отправляете фото, получаете расклад и аудио. Живёте в любом городе — не важно." },
+  { q: "Что нужно прислать для расклада?", a: "Только своё фото и вопрос. Никакой биографии и предыстории — карты сами покажут всё нужное." },
+  { q: "Как быстро получу ответ?", a: "Обычно в течение нескольких часов в тот же день. В загруженные дни — максимум на следующий день утром." },
+  { q: "Что если расклад не попадёт в точку?", a: "Такого практически не бывает — смотрите отзывы. Но если что-то непонятно или кажется неточным — разберём вместе, всегда на связи." },
+  { q: "Можно задать уточняющие вопросы?", a: "Да, конечно. После расклада всегда можно уточнить детали — отвечу." },
+];
+
 const HOW_STEPS = [
   { n: "1", icon: "💬", title: "Пишете вопрос", desc: "Пишете вопрос и отправляете своё фото. Никакой предыстории — только вопрос и фото." },
   { n: "2", icon: "🃏", title: "Я делаю расклад", desc: "Раскладываю карты и фотографирую расклад. Затем записываю аудио с подробной расшифровкой." },
@@ -145,6 +162,26 @@ function UrgencyBanner() {
   );
 }
 
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="bg-white/4 border border-white/10 rounded-2xl overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition"
+      >
+        <span className="font-semibold text-sm sm:text-base">{q}</span>
+        <span className={`text-amber-400 text-xl shrink-0 transition-transform duration-200 ${open ? "rotate-45" : ""}`}>+</span>
+      </button>
+      {open && (
+        <div className="px-5 pb-4 text-white/55 text-sm leading-relaxed border-t border-white/8 pt-3">
+          {a}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Index() {
   return (
     <div className="min-h-screen bg-[#0e0814] text-white" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -163,7 +200,7 @@ export default function Index() {
         <div className="relative z-10 w-full px-4 pb-10 pt-8 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-amber-400/15 border border-amber-400/30 rounded-full px-4 py-1.5 text-amber-300 text-sm font-semibold mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-            Онлайн · Отвечаю быстро
+            Онлайн · Отвечаю в течение часа
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
             Не откладывай —<br />
@@ -172,13 +209,30 @@ export default function Index() {
           <p className="text-white/75 text-lg sm:text-xl mb-2">
             Расклад Таро <span className="text-amber-300 font-bold">от 550 ₽</span>
           </p>
-          <p className="text-white/50 text-base mb-6">
+          <p className="text-white/50 text-base mb-5">
             Меня зовут Вероника. Помогаю найти ответы там, где их не видно.
           </p>
-          <div className="mb-6">
-            <UrgencyBanner />
+
+          {/* Главная кнопка прямо в герое */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <a href={MAX_URL} target="_blank" rel="noopener noreferrer" data-goal="click_max"
+              className="flex-1 flex items-center justify-center gap-2 bg-amber-400 hover:bg-amber-300 text-black font-black text-lg py-4 rounded-2xl transition active:scale-95 shadow-xl shadow-amber-400/25">
+              <img src={MAX_LOGO} alt="MAX" className="w-5 h-5 rounded-full" />
+              Расклад за 550 ₽ — написать
+            </a>
           </div>
-          <ContactButtons size="lg" />
+          <div className="flex gap-3 mb-5">
+            <a href={TG_URL} target="_blank" rel="noopener noreferrer" data-goal="click_telegram"
+              className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold py-3 rounded-2xl transition text-sm">
+              {TG_SVG} Telegram
+            </a>
+            <a href={MAX_URL} target="_blank" rel="noopener noreferrer" data-goal="click_max"
+              className="flex-1 flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold py-3 rounded-2xl transition text-sm">
+              <img src={MAX_LOGO} alt="MAX" className="w-4 h-4 rounded-full" /> MAX
+            </a>
+          </div>
+
+          <UrgencyBanner />
         </div>
       </section>
 
@@ -215,6 +269,30 @@ export default function Index() {
         </div>
       </section>
 
+      {/* ── С ЧЕМ ПРИХОДЯТ ── */}
+      <section className="py-12 px-4 max-w-3xl mx-auto">
+        <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+          С чем чаще всего приходят
+        </h2>
+        <p className="text-white/40 text-center mb-8 text-sm">Узнайте себя — и напишите прямо сейчас</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+          {TOPICS.map((t) => (
+            <a key={t.label} href={TG_URL} target="_blank" rel="noopener noreferrer" data-goal="click_telegram"
+              className="group bg-white/4 hover:bg-white/8 border border-white/10 hover:border-amber-400/30 rounded-2xl p-4 transition cursor-pointer">
+              <div className="text-2xl mb-2">{t.icon}</div>
+              <div className="font-bold text-sm mb-1">{t.label}</div>
+              <div className="text-white/40 text-xs leading-relaxed">{t.desc}</div>
+            </a>
+          ))}
+        </div>
+        <div className="flex justify-center">
+          <a href={TG_URL} target="_blank" rel="noopener noreferrer" data-goal="click_telegram"
+            className="flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-black font-black px-8 py-4 rounded-2xl transition active:scale-95 text-base shadow-lg shadow-amber-400/20">
+            {TG_SVG} Написать свой вопрос
+          </a>
+        </div>
+      </section>
+
       {/* ── КАК ЭТО РАБОТАЕТ ── */}
       <section className="py-14 px-4 max-w-3xl mx-auto">
         <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
@@ -228,6 +306,25 @@ export default function Index() {
               <div className="absolute top-4 right-4 text-white/10 font-black text-4xl leading-none" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{s.n}</div>
               <div className="font-bold text-base mb-1.5">{s.title}</div>
               <div className="text-white/50 text-sm leading-relaxed">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── ГАРАНТИЯ ── */}
+      <section className="px-4 pb-4 max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { icon: "⚡", title: "Ответ в тот же день", desc: "Обычно в течение нескольких часов после оплаты" },
+            { icon: "🎧", title: "Фото + аудио расклад", desc: "Видите карты и слышите подробное объяснение" },
+            { icon: "🤝", title: "Честно и без прикрас", desc: "Говорю как есть — даже если это неприятно" },
+          ].map((g) => (
+            <div key={g.title} className="flex items-start gap-3 bg-white/3 border border-white/8 rounded-2xl p-4">
+              <span className="text-2xl shrink-0">{g.icon}</span>
+              <div>
+                <div className="font-bold text-sm mb-0.5">{g.title}</div>
+                <div className="text-white/45 text-xs leading-relaxed">{g.desc}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -386,6 +483,19 @@ export default function Index() {
               </a>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section className="py-14 px-4 max-w-3xl mx-auto">
+        <h2 className="text-3xl sm:text-4xl font-bold text-center mb-2" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+          Частые вопросы
+        </h2>
+        <p className="text-white/40 text-center mb-8 text-sm">Если что-то непонятно — просто напишите</p>
+        <div className="space-y-3">
+          {FAQ.map((f) => (
+            <FaqItem key={f.q} q={f.q} a={f.a} />
+          ))}
         </div>
       </section>
 
