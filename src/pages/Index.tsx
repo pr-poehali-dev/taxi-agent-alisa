@@ -203,12 +203,10 @@ export default function Index() {
             Онлайн · Отвечаю в течение часа
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Не откладывай —<br />
-            <span className="text-amber-300">узнай своё завтра!</span>
+            Заказать расклад таро.<br />
+            <span className="text-amber-300">Ответ за 5 минут.</span><br />
+            От 550 ₽
           </h1>
-          <p className="text-white/75 text-lg sm:text-xl mb-2">
-            Расклад Таро <span className="text-amber-300 font-bold">от 550 ₽</span>
-          </p>
           <p className="text-white/50 text-base mb-5">
             Меня зовут Вероника. Помогаю найти ответы там, где их не видно.
           </p>
