@@ -1,7 +1,3 @@
 {
-  "taxi-reviews": "https://functions.poehali.dev/287adda7-337c-4c11-8150-0de8515518bf",
-  "taxi-chat": "https://functions.poehali.dev/31593179-9aa7-4ad9-b130-e9275e53f535",
-  "taxi-orders": "https://functions.poehali.dev/69406187-ed0b-4d03-9d39-436ddd735c01",
-  "taxi-auth": "https://functions.poehali.dev/cf9bec69-4653-4e8c-9fd4-b338d3b16813",
-  "admin": "https://functions.poehali.dev/c1001ea1-8ce4-4812-a3e2-9488343a7660"
+  "tarot-lead-notify": "https://functions.poehali.dev/7f765618-e6ac-448b-ab1d-03bc2f47732e"
 }
