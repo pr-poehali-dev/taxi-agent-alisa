@@ -203,12 +203,12 @@ export default function Index() {
             Онлайн · Отвечаю в течение часа
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
-            Заказать расклад таро.<br />
-            <span className="text-amber-300">Ответ за 5 минут.</span><br />
-            От 550 ₽
+            Заказать расклад Таро<br />
+            у живого таролога.<br />
+            <span className="text-amber-300">От 550 ₽</span>
           </h1>
           <p className="text-white/50 text-base mb-5">
-            Меня зовут Вероника. Помогаю найти ответы там, где их не видно.
+            Меня зовут Вероника, я работаю лично — без ботов и шаблонов. Отвечаю голосом на ваш вопрос.
           </p>
 
           {/* Главная кнопка прямо в герое */}
